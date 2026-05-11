@@ -1,0 +1,269 @@
+architecture :
+  
+  software_system : SpringPetClinicMicroservices
+  
+  structures :
+
+    component_and_connector :
+    
+      elements :
+
+        component web_ui ( presentation > web_frontend )
+
+        component api_gateway ( communication > api_gateway )
+
+        component discovery_server ( communication > orchestrator )
+
+        component config_server ( communication > orchestrator )
+
+        component customers_svc (
+            logic > microservice :
+                programming_language : Java
+        )
+
+        component vets_svc (
+            logic > microservice :
+                programming_language : Java
+        )
+
+        component visits_svc (
+            logic > microservice :
+                programming_language : Java
+        )
+
+        component genai_svc (
+            logic > microservice :
+                programming_language : Java
+        )
+
+        component admin_server ( infrastructure > load_balancer )
+
+        component tracing_server ( infrastructure > reverse_proxy )
+
+        component prometheus ( infrastructure > reverse_proxy )
+
+        component grafana ( presentation > web_frontend )
+
+        component db_customers (
+            data > database > relational :
+                dbms : MySQL
+        )
+
+        component db_vets (
+            data > database > relational :
+                dbms : MySQL
+        )
+
+        component db_visits (
+            data > database > relational :
+                dbms : MySQL
+        )
+
+        connector cn_rest       ( procedure_call > REST )
+        connector cn_http       ( procedure_call > HTTP )
+        connector cn_db_cust    ( repository > db_connector )
+        connector cn_db_vets    ( repository > db_connector )
+        connector cn_db_visits  ( repository > db_connector )
+
+      relations :
+
+        attachment ( web_ui          -> cn_rest -> api_gateway )
+
+        attachment ( api_gateway     -> cn_rest -> customers_svc )
+        attachment ( api_gateway     -> cn_rest -> vets_svc )
+        attachment ( api_gateway     -> cn_rest -> visits_svc )
+        attachment ( api_gateway     -> cn_rest -> genai_svc )
+
+        attachment ( genai_svc       -> cn_rest -> customers_svc )
+        attachment ( genai_svc       -> cn_rest -> vets_svc )
+        attachment ( genai_svc       -> cn_rest -> visits_svc )
+
+        attachment ( customers_svc   -> cn_http -> discovery_server )
+        attachment ( vets_svc        -> cn_http -> discovery_server )
+        attachment ( visits_svc      -> cn_http -> discovery_server )
+        attachment ( genai_svc       -> cn_http -> discovery_server )
+        attachment ( api_gateway     -> cn_http -> discovery_server )
+
+        attachment ( customers_svc   -> cn_http -> config_server )
+        attachment ( vets_svc        -> cn_http -> config_server )
+        attachment ( visits_svc      -> cn_http -> config_server )
+        attachment ( genai_svc       -> cn_http -> config_server )
+        attachment ( api_gateway     -> cn_http -> config_server )
+
+        attachment ( prometheus      -> cn_http -> customers_svc )
+        attachment ( prometheus      -> cn_http -> vets_svc )
+        attachment ( prometheus      -> cn_http -> visits_svc )
+        attachment ( prometheus      -> cn_http -> api_gateway )
+
+        attachment ( grafana         -> cn_http -> prometheus )
+
+        attachment ( admin_server    -> cn_http -> customers_svc )
+        attachment ( admin_server    -> cn_http -> vets_svc )
+        attachment ( admin_server    -> cn_http -> visits_svc )
+
+        attachment ( customers_svc   -> cn_http -> tracing_server )
+        attachment ( vets_svc        -> cn_http -> tracing_server )
+        attachment ( visits_svc      -> cn_http -> tracing_server )
+        attachment ( api_gateway     -> cn_http -> tracing_server )
+
+        attachment ( customers_svc   -> cn_db_cust   -> db_customers )
+        attachment ( vets_svc        -> cn_db_vets   -> db_vets )
+        attachment ( visits_svc      -> cn_db_visits -> db_visits )
+
+    deployment :
+
+      elements :
+
+        software_element se_web_ui :
+            instance_of : web_ui
+            port_mapping : 8080:8080
+
+        software_element se_api_gateway :
+            instance_of : api_gateway
+            port_mapping : 8080:8080
+
+        software_element se_config_server :
+            instance_of : config_server
+            port_mapping : 8888:8888
+
+        software_element se_discovery_server :
+            instance_of : discovery_server
+            port_mapping : 8761:8761
+
+        software_element se_customers_svc :
+            instance_of : customers_svc
+            port_mapping : 8081:8081
+
+        software_element se_vets_svc :
+            instance_of : vets_svc
+            port_mapping : 8082:8082
+
+        software_element se_visits_svc :
+            instance_of : visits_svc
+            port_mapping : 8083:8083
+
+        software_element se_genai_svc :
+            instance_of : genai_svc
+            port_mapping : 8084:8084
+
+        software_element se_admin_server :
+            instance_of : admin_server
+            port_mapping : 9090:9090
+
+        software_element se_tracing_server :
+            instance_of : tracing_server
+            port_mapping : 9411:9411
+
+        software_element se_prometheus :
+            instance_of : prometheus
+            port_mapping : 9091:9091
+
+        software_element se_grafana :
+            instance_of : grafana
+            port_mapping : 3030:3000
+
+        software_element se_db_customers :
+            instance_of : db_customers
+            port_mapping : 3306:3306
+
+        software_element se_db_vets :
+            instance_of : db_vets
+            port_mapping : 3307:3306
+
+        software_element se_db_visits :
+            instance_of : db_visits
+            port_mapping : 3308:3306
+
+        network vpc_main :
+            cidr : "10.0.0.0/16"
+
+        subnet sn_public :
+            cidr : "10.0.1.0/24"
+            visibility : public
+
+        subnet sn_private :
+            cidr : "10.0.2.0/24"
+            visibility : private
+
+        subnet sn_observability :
+            cidr : "10.0.3.0/24"
+            visibility : private
+
+        container ct_api_gateway       : image : "springcommunity/spring-petclinic-api-gateway:latest"
+        container ct_config_server     : image : "springcommunity/spring-petclinic-config-server:latest"
+        container ct_discovery_server  : image : "springcommunity/spring-petclinic-discovery-server:latest"
+        container ct_customers_svc     : image : "springcommunity/spring-petclinic-customers-service:latest"
+        container ct_vets_svc          : image : "springcommunity/spring-petclinic-vets-service:latest"
+        container ct_visits_svc        : image : "springcommunity/spring-petclinic-visits-service:latest"
+        container ct_genai_svc         : image : "springcommunity/spring-petclinic-genai-service:latest"
+        container ct_admin_server      : image : "springcommunity/spring-petclinic-admin-server:latest"
+        container ct_tracing_server    : image : "openzipkin/zipkin:latest"
+        container ct_prometheus        : image : "prom/prometheus:latest"
+        container ct_grafana           : image : "grafana/grafana:latest"
+        container ct_db_customers      : image : "mysql:8.4.5"
+        container ct_db_vets           : image : "mysql:8.4.5"
+        container ct_db_visits         : image : "mysql:8.4.5"
+
+        node node_services      : os : "Ubuntu 24.04"
+        node node_infra         : os : "Ubuntu 24.04"
+        node node_observability : os : "Ubuntu 24.04"
+
+        execution_environment ee_jvm_gateway    : type : jvm
+        execution_environment ee_jvm_config     : type : jvm
+        execution_environment ee_jvm_discovery  : type : jvm
+        execution_environment ee_jvm_customers  : type : jvm
+        execution_environment ee_jvm_vets       : type : jvm
+        execution_environment ee_jvm_visits     : type : jvm
+        execution_environment ee_jvm_genai      : type : jvm
+        execution_environment ee_jvm_admin      : type : jvm
+
+      relations :
+
+        deployed_in ( se_api_gateway      -> ct_api_gateway )
+        deployed_in ( se_config_server    -> ct_config_server )
+        deployed_in ( se_discovery_server -> ct_discovery_server )
+        deployed_in ( se_customers_svc    -> ct_customers_svc )
+        deployed_in ( se_vets_svc         -> ct_vets_svc )
+        deployed_in ( se_visits_svc       -> ct_visits_svc )
+        deployed_in ( se_genai_svc        -> ct_genai_svc )
+        deployed_in ( se_admin_server     -> ct_admin_server )
+        deployed_in ( se_tracing_server   -> ct_tracing_server )
+        deployed_in ( se_prometheus       -> ct_prometheus )
+        deployed_in ( se_grafana          -> ct_grafana )
+        deployed_in ( se_db_customers     -> ct_db_customers )
+        deployed_in ( se_db_vets          -> ct_db_vets )
+        deployed_in ( se_db_visits        -> ct_db_visits )
+
+        runs_on ( ee_jvm_gateway   -> ct_api_gateway )
+        runs_on ( ee_jvm_config    -> ct_config_server )
+        runs_on ( ee_jvm_discovery -> ct_discovery_server )
+        runs_on ( ee_jvm_customers -> ct_customers_svc )
+        runs_on ( ee_jvm_vets      -> ct_vets_svc )
+        runs_on ( ee_jvm_visits    -> ct_visits_svc )
+        runs_on ( ee_jvm_genai     -> ct_genai_svc )
+        runs_on ( ee_jvm_admin     -> ct_admin_server )
+
+        runs_on ( ct_api_gateway      -> node_infra )
+        runs_on ( ct_config_server    -> node_infra )
+        runs_on ( ct_discovery_server -> node_infra )
+        runs_on ( ct_customers_svc    -> node_services )
+        runs_on ( ct_vets_svc         -> node_services )
+        runs_on ( ct_visits_svc       -> node_services )
+        runs_on ( ct_genai_svc        -> node_services )
+        runs_on ( ct_db_customers     -> node_services )
+        runs_on ( ct_db_vets          -> node_services )
+        runs_on ( ct_db_visits        -> node_services )
+        runs_on ( ct_admin_server     -> node_observability )
+        runs_on ( ct_tracing_server   -> node_observability )
+        runs_on ( ct_prometheus       -> node_observability )
+        runs_on ( ct_grafana          -> node_observability )
+
+        belongs_to ( sn_public        -> vpc_main )
+        belongs_to ( sn_private       -> vpc_main )
+        belongs_to ( sn_observability -> vpc_main )
+        belongs_to ( node_infra         -> sn_public )
+        belongs_to ( node_services      -> sn_private )
+        belongs_to ( node_observability -> sn_observability )
+
+        connected_to ( sn_public        -> sn_private )
+        connected_to ( sn_private       -> sn_observability )
